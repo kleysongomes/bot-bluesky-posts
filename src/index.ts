@@ -5,28 +5,51 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+console.log('Iniciando o bot...');
 
-const posts = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'posts.json'), 'utf-8')
-);
+// Verifica se as variáveis de ambiente foram carregadas corretamente
+if (!process.env.IDENTIFIER || !process.env.PASSWORD) {
+  console.error('Erro: As variáveis de ambiente IDENTIFIER e PASSWORD não estão definidas.');
+  process.exit(1);
+}
 
+console.log('Variáveis de ambiente carregadas com sucesso.');
+
+const postsPath = path.join(__dirname, 'posts.json');
+console.log(`Caminho do arquivo de posts: ${postsPath}`);
+
+interface Post {
+  content: string;
+}
+
+let posts: Post[] = [];
+try {
+  const data = fs.readFileSync(postsPath, 'utf-8');
+  posts = JSON.parse(data);
+  console.log('Posts carregados com sucesso:', posts);
+} catch (error) {
+  console.error('Erro ao ler o arquivo posts.json:', error);
+  process.exit(1);
+}
 
 async function getBlueskyAccessToken() {
+  console.log('Tentando obter o token de acesso...');
   try {
     const response = await axios.post('https://bsky.social/xrpc/com.atproto.server.createSession', {
       identifier: process.env.IDENTIFIER,
       password: process.env.PASSWORD,
     });
 
-    return response.data.accessJwt; 
+    console.log('Token de acesso obtido com sucesso.');
+    return response.data.accessJwt;
   } catch (error) {
     console.error('Erro ao obter o token de acesso:', error);
     throw error;
   }
 }
 
-// Função para publicar uma postagem no Bluesky
 async function postToBluesky(content: string, accessToken: string) {
+  console.log(`Tentando publicar post: "${content}"`);
   const apiEndpoint = 'https://bsky.social/xrpc/com.atproto.repo.createRecord';
 
   try {
@@ -49,9 +72,9 @@ async function postToBluesky(content: string, accessToken: string) {
       }
     );
 
-    console.log('Postagem publicada:', response.data);
+    console.log('Postagem publicada com sucesso:', response.data);
   } catch (error) {
-    console.error('Erro ao publicar:', error);
+    console.error('Erro ao publicar a postagem:', error);
   }
 }
 
@@ -63,6 +86,8 @@ async function runBot() {
     console.log('Aguardando 30 minutos para próxima postagem...');
     await new Promise((resolve) => setTimeout(resolve, 30 * 60 * 1000)); // 30 minutos
   }
+
+  console.log('Todas as postagens foram concluídas.');
 }
 
 runBot().catch(console.error);
